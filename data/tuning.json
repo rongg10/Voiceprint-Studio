@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-02-12 15:59:24",
+  "dataset": {
+    "name": "openslr/librispeech_asr",
+    "config": "clean",
+    "split": "train.100",
+    "root": "/Users/shirong/Downloads/voice_recognition/data/calibration/openslr_librispeech_asr-clean-train.100",
+    "requestedSpeakers": 4,
+    "requestedSamplesPerSpeaker": 4,
+    "speakers": 8,
+    "samplesPerSpeakerMin": 6,
+    "samplesPerSpeakerMax": 6,
+    "minSeconds": 3.0,
+    "maxSeconds": 12.0,
+    "sampleRate": 16000
+  },
+  "extraction": {
+    "files_total": 48,
+    "files_with_embedding": 48,
+    "speech_frames": 630
+  },
+  "stats": {
+    "targetScores": {
+      "p01": 0.19593087116737587,
+      "p05": 0.7002078968151028,
+      "p10": 0.7451642537056518,
+      "p50": 0.8765930266715783,
+      "p90": 0.9157131587322491,
+      "p95": 0.9217240385579912,
+      "p99": 0.9327256495654319
+    },
+    "nonTargetScores": {
+      "p01": 0.1847734660867969,
+      "p05": 0.22028659675654766,
+      "p10": 0.2435325825540388,
+      "p50": 0.4490275510752568,
+      "p90": 0.6606849231442156,
+      "p95": 0.6855506113640187,
+      "p99": 0.7343011752833395
+    },
+    "clusterStability": {
+      "p01": 0.42421873292172707,
+      "p05": 0.5454166809417856,
+      "p10": 0.6969141159668589,
+      "p50": 0.9216359567982797,
+      "p90": 0.9367396351165738,
+      "p95": 0.9368321891860611,
+      "p99": 0.936906232441651
+    },
+    "pairwiseMean": {
+      "p01": 0.671869552100247,
+      "p05": 0.720332821385477,
+      "p10": 0.7809119079920146,
+      "p50": 0.8547677595606213,
+      "p90": 0.892694588615049,
+      "p95": 0.8975954034751759,
+      "p99": 0.9015160553632772
+    },
+    "pairwiseStd": {
+      "p01": 0.02101496140779626,
+      "p05": 0.02175825855448482,
+      "p10": 0.022687379987845528,
+      "p50": 0.03345468389418129,
+      "p90": 0.1560829503997425,
+      "p95": 0.24074628804314882,
+      "p99": 0.30847695815787396
+    }
+  },
+  "tuning": {
+    "matchThreshold": 0.7343011752833395,
+    "newSpeakerThreshold": 0.7002078968151028,
+    "minMatchMargin": 0.05,
+    "scoreCalibrationScale": 1.9740188405222752,
+    "scoreCalibrationBias": -3.0489837600480683,
+    "enrollmentMinSegments": 5,
+    "enrollmentMinClusterSimilarity": 0.6969141159668589,
+    "enrollmentMinPairwiseSimilarity": 0.7809119079920146,
+    "enrollmentMaxPairwiseStd": 0.1560829503997425,
+    "enrollmentCooldownSegments": 10
+  }
+}

@@ -1,0 +1,11 @@
+[
+  {"signal": "noise", "source": "music.mp3"},
+  {"signal": "speech", "embedding": [0.98, 0.02, 0.01], "source": "speaker_a_01.mp3"},
+  {"signal": "speech", "embedding": [0.99, 0.01, 0.00], "source": "speaker_a_01.mp3"},
+  {"signal": "speech", "embedding": [0.97, 0.03, 0.01], "source": "speaker_a_01.mp3"},
+  {"signal": "speech", "embedding": [0.96, 0.04, 0.02], "source": "speaker_a_02.mp3"},
+  {"signal": "speech", "embedding": [0.03, 0.98, 0.02], "source": "speaker_b_01.mp3"},
+  {"signal": "speech", "embedding": [0.02, 0.99, 0.01], "source": "speaker_b_01.mp3"},
+  {"signal": "speech", "embedding": [0.01, 0.98, 0.02], "source": "speaker_b_01.mp3"},
+  {"signal": "silence", "source": "speaker_b_01.mp3"}
+]
