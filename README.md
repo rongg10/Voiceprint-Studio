@@ -1,121 +1,78 @@
-# Voice Recognition Demo (Button UI)
+# 声纹识别演示项目（中文发布版）
 
-This project now provides a local frontend app (browser UI with buttons) that can:
+这是一个本地运行的实时声纹识别项目，提供浏览器页面操作，不需要命令行交互即可使用。
 
-- listen to microphone audio or system-loopback audio;
-- separate silence / background noise / human speech;
-- auto-enroll new speakers as `新人1`, `新人2`, ...;
-- match enrolled speakers in real time and show confidence;
-- support dual speaker-library scopes: `global` (persistent SQLite) and `session` (in-memory).
-- run neural pipeline: `Silero VAD + ECAPA-TDNN` (SpeechBrain).
-- use modern scoring pipeline in live mode: `adaptive score normalization (AS-Norm style) + logistic calibration`.
+核心能力：
+- 实时区分 `静音 / 噪声 / 人声`。
+- 自动将稳定新说话人入库（例如 `新人1`、`新人2`）。
+- 对已入库说话人进行实时匹配并显示置信度。
+- 默认使用 `WavLM + ECAPA` 融合嵌入。
+- 默认使用 `global` 持久化库（SQLite，重启后保留）。
+- 提供自动调参脚本，生成 `data/tuning.json` 并在启动时自动加载。
 
-Requirement and design docs:
-
+相关文档：
 - `/Users/shirong/Downloads/voice_recognition/docs/requirements.md`
 - `/Users/shirong/Downloads/voice_recognition/docs/design.md`
 
-## 1. Install dependencies
+## 1. 环境要求
+
+- Python `>= 3.10`
+- macOS 或 Windows
+- 首次运行需要联网下载模型（会缓存到 `data/models`）
+
+安装依赖：
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-首次运行会自动下载预训练模型到 `data/models`（需要联网，约数百 MB；默认使用 WavLM + ECAPA 融合，下载更大）。
-如设备支持 MPS（Apple Silicon），程序会自动使用 MPS 加速推理。
-如遇 `numpy has no attribute dtypes` 错误，请确保依赖已更新到本项目 requirements 里的版本（`numpy>=1.26,<2.0` + `transformers==4.41.2`）。
+如遇 `numpy has no attribute dtypes`，请确认依赖版本来自本仓库的 `requirements.txt`（`numpy>=1.26,<2.0` 与 `transformers==4.41.2`）。
 
-## 2. Start the frontend app
+## 2. 启动方式
+
+命令行启动：
 
 ```bash
 PYTHONPATH=src python -m voice_recognition.web_frontend
 ```
 
-Or just double click:
-
+也可以双击：
 - macOS: `/Users/shirong/Downloads/voice_recognition/start_app.command`
 - Windows: `/Users/shirong/Downloads/voice_recognition/start_app.bat`
 
-Optional parameters:
+可选参数：
 
 ```bash
 PYTHONPATH=src python -m voice_recognition.web_frontend --port 8765 --db-path data/speakers.db
 ```
 
-After startup, open `http://127.0.0.1:8765` if browser did not auto-open.
+启动后默认地址：`http://127.0.0.1:8765/`
 
-## 3. Use the button UI
+## 3. 页面使用说明
 
-1. Select `Input Source`: `microphone` or `system`.
-2. Select `Device`（`system` 下请选择 `BlackHole 2ch` 这类回环输入设备）。
-3. Click `刷新设备`（切换输入源后建议先刷新一次）。
-4. Click `开始`.
-5. Speak or play audio:
-   - noise/music -> state shows `Background Noise`;
-   - unknown speech -> auto-collects segments;
-   - stable new speaker -> auto-registers as `新人N`;
-   - known speaker -> speaker row is highlighted with confidence.
-6. Click `停止`.
-7. 需要清库时，先停止，再点 `清空名单`。
+页面已全部中文化，默认展示诊断信息。
 
-说明：默认启用 `AS-Norm` 评分后端；默认 embedding 为 `WavLM + ECAPA` 融合。
-说明：高级 embedding 仍可通过 API 传入 `embeddingModels`（如 `hf:microsoft/wavlm-base-plus-sv` 或 `speechbrain/spkrec-ecapa-voxceleb`）与 `embeddingFusion`（`average` / `concat`）。
+基础流程：
+1. 选择输入源：`麦克风` 或 `系统回放`。
+2. 选择设备（也可保留 `自动选择`）。
+3. 点击 `开始识别`。
+4. 识别过程中可看到：状态、当前说话人、置信度、入库人数。
+5. 结束时点击 `停止识别`。
+6. 如需清空数据库，点击 `清空名单`。
 
-说明：开始后前 2~3 秒会做噪声地板校准，这段时间可能只显示 `Silence`，属于正常行为。
+系统回放模式额外功能：
+- `一键配置系统回放`：触发自动配置助手。
+- `重启电脑（可选）`：某些 macOS 驱动安装后需要重启生效。
 
-## 4.1 Troubleshooting: 全部识别成一个人
+## 4. 自动调参（推荐）
 
-如果你之前已经跑过并把全局库污染了（不同人被错误并到同一ID）：
-
-1. 先点页面 `停止`
-2. 点 `清空库`（在 `global` 模式下会清空 `data/speakers.db`）
-3. 重新点 `开始监听`
-
-建议先用 `session` 模式验证，再切回 `global`。
-
-如果 `system + session` 在静音时仍显示有人说话：
-
-1. 确认选中的确是 loopback 输入设备，而不是带麦克风混入的复合设备。
-2. 启动后静置 3 秒等校准完成，再观察状态。
-3. 点 `清空库` 后重新开始，避免旧错误声纹干扰。
-
-## 5. System audio mode notes
-
-- macOS: usually needs a loopback virtual device (for example BlackHole/Loopback) and selecting it as input in this app.
-- macOS: for hearing and capture together, set macOS Output to a Multi-Output Device that includes both `BlackHole 2ch` and your headphones.
-- Windows: typically uses Stereo Mix or WASAPI loopback-compatible input.
-- If no dedicated system-loopback device exists, install/configure one first.
-- 如果 `system` 下设备列表为空，说明还没有可用回环输入设备；此时无法直接监听耳机播放内容。
-
-## 6. Live console mode (optional fallback)
-
-If you want a terminal dashboard:
-
-```bash
-PYTHONPATH=src python -m voice_recognition.live_console
-```
-
-## 7. CLI frame replay (optional)
-
-```bash
-PYTHONPATH=src python -m voice_recognition --scope global --input-json data/sample_frames.json --show-speakers
-```
-
-## 8. Run tests
-
-```bash
-PYTHONPATH=src python -m unittest discover -s tests -v
-```
-
-## 9. Automatic calibration (recommended)
-
-下载一小批公开数据并自动生成阈值（写入 `data/tuning.json`，启动服务时会自动加载）：
+自动下载公开语音数据并计算阈值，输出到 `data/tuning.json`：
 
 ```bash
 PYTHONPATH=src python -m voice_recognition.evaluation.auto_tune
 ```
 
-你也可以自定义采样规模：
+自定义数据规模：
 
 ```bash
 PYTHONPATH=src python -m voice_recognition.evaluation.auto_tune \
@@ -125,21 +82,51 @@ PYTHONPATH=src python -m voice_recognition.evaluation.auto_tune \
   --max-seconds 12.0
 ```
 
-## 10. Offline real-audio evaluation (optional)
+服务启动时会自动读取 `data/tuning.json`，覆盖默认阈值。
 
-准备数据目录（每个说话人一个子目录）：
+## 5. 项目框架（架构总览）
 
-```text
-your_dataset/
-  speaker_a/
-    a1.wav
-    a2.wav
-  speaker_b/
-    b1.wav
-    b2.wav
-```
+数据流：
+1. `web_frontend.py`：提供网页与 HTTP API。
+2. `web_controller.py`：接收前端操作，构造 `LiveConfig`，调起服务。
+3. `live_service.py`：启动音频流、异步处理队列、识别引擎。
+4. `audio/signal_processor.py`：VAD + 嵌入提取（WavLM/ECAPA 融合）。
+5. `recognition/engine.py`：匹配、软匹配、自动入库、原型更新。
+6. `recognition/matcher.py`：AS-Norm + 校准分数 + 阈值判断。
+7. `storage/sqlite_repository.py`：全局持久化 speaker 库（线程安全访问）。
 
-运行评估：
+关键目录：
+- `/Users/shirong/Downloads/voice_recognition/src/voice_recognition/audio`
+- `/Users/shirong/Downloads/voice_recognition/src/voice_recognition/recognition`
+- `/Users/shirong/Downloads/voice_recognition/src/voice_recognition/storage`
+- `/Users/shirong/Downloads/voice_recognition/src/voice_recognition/evaluation`
+
+## 6. macOS 自动化能力与边界
+
+当前可自动做的事：
+- 自动检测回环设备是否可用。
+- 检测到 Homebrew 时自动安装 `blackhole-2ch`。
+- 自动打开 `音频 MIDI 设置`，并在页面显示下一步提示。
+
+当前不能 100% 全自动的部分：
+- 自动创建“多输出设备（耳机 + BlackHole）”并保证系统长期稳定路由。
+- 主要原因：macOS 对音频设备拓扑管理没有稳定公开 API，跨版本 GUI 自动化可靠性很差。
+
+结论：
+- `BlackHole 安装`基本可自动化。
+- `多输出设备创建与路由细节`仍建议人工确认（但页面已给出引导和诊断）。
+
+## 7. Windows 能否跑通
+
+可以跑通，但分两种：
+- 麦克风识别：通常可直接使用。
+- 系统回放识别：需要 `Stereo Mix` 或 `VB-Cable` 这类回环输入设备。
+
+项目内置 Windows 配置助手会打开声音设置页面，指导你启用相关设备。
+
+## 8. 离线评估（可选）
+
+如果你有自己的数据集（目录结构 `dataset/<speaker>/*.wav`）：
 
 ```bash
 PYTHONPATH=src python -m voice_recognition.evaluation.offline_eval \
@@ -147,7 +134,7 @@ PYTHONPATH=src python -m voice_recognition.evaluation.offline_eval \
   --profile balanced
 ```
 
-可选：拟合分数校准参数并输出闭集 Top1 指标
+可选拟合 Platt 校准：
 
 ```bash
 PYTHONPATH=src python -m voice_recognition.evaluation.offline_eval \
@@ -157,8 +144,23 @@ PYTHONPATH=src python -m voice_recognition.evaluation.offline_eval \
   --fit-platt
 ```
 
-报告会输出：
-- `verification`: `EER` / `min_dcf_p01`（验证任务指标）
-- `closed_set`: `top1` / `accept_rate`（闭集识别质量）
-- `calibration`: `scale` / `bias`（可用于在线打分校准）
-- `streaming`: `unknown_file_rate` / `duplicate_label_rate`（流式识别可用性指标）
+## 9. 测试
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -v
+```
+
+## 10. 常见问题
+
+`system` 模式设备列表为空：
+- 说明当前没有可用回环输入设备。
+- 请先执行页面里的 `一键配置系统回放`，或手动安装/启用 BlackHole、Stereo Mix、VB-Cable。
+
+同一人被拆成多个 ID：
+- 先停止服务，清空名单，再重新开始。
+- 跑一次自动调参生成 `data/tuning.json`。
+- 优先使用稳定输入设备，避免蓝牙免提低码率链路。
+
+实时卡顿或溢出：
+- 优先使用默认参数，不要手动降低块大小。
+- 在系统回放模式减少后台高负载应用。

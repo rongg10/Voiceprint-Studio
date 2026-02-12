@@ -19,205 +19,462 @@ HTML = """<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voiceprint Studio</title>
+  <title>声纹识别控制台</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700;800&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f7f4ef;
-      --card: #ffffff;
-      --border: #e7ded1;
-      --text: #1b1b1b;
-      --muted: #5f5b55;
-      --accent: #d4492a;
-      --accent-2: #1e8c7a;
-      --warn: #b91c1c;
-      --highlight: #fff1d6;
-      --shadow: 0 18px 40px rgba(27, 24, 20, 0.12);
+      --bg: #f2f6fb;
+      --surface: #ffffff;
+      --line: #d5e0ea;
+      --text: #142436;
+      --muted: #5a7388;
+      --brand: #1b67d5;
+      --brand-hover: #1258ba;
+      --warn-bg: #fff6ed;
+      --warn-line: #f2d0ba;
+      --danger-bg: #fff1f5;
+      --danger-line: #f0c8d4;
+      --ok: #1e9a62;
+      --shadow: 0 12px 28px rgba(20, 36, 54, 0.08);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Space Grotesk", "PingFang SC", "Helvetica Neue", sans-serif;
-      background:
-        radial-gradient(circle at 6% 12%, #ffe7d7 0, transparent 45%),
-        radial-gradient(circle at 96% 0%, #dff3ee 0, transparent 36%),
-        radial-gradient(circle at 80% 80%, #fff2da 0, transparent 45%),
-        var(--bg);
+      min-height: 100vh;
+      background: linear-gradient(180deg, #edf3fa 0%, #f7fbff 100%);
       color: var(--text);
+      font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
-    .wrap { max-width: 1080px; margin: 24px auto; padding: 0 14px; }
-    .title { font-family: "Fraunces", "PingFang SC", serif; font-size: 34px; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
-    .subtitle { margin: 6px 0 14px 0; color: var(--muted); font-size: 15px; }
+    .container {
+      max-width: 1160px;
+      margin: 22px auto 30px;
+      padding: 0 14px;
+    }
     .panel {
-      background: var(--card);
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
       border-radius: 14px;
-      padding: 14px;
+      background: var(--surface);
       box-shadow: var(--shadow);
+      padding: 14px;
       margin-bottom: 12px;
     }
-    .controls {
-      display: grid;
-      grid-template-columns: 120px 1fr 100px 1fr 140px;
-      gap: 10px;
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .title {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-family: "Noto Sans SC", "IBM Plex Sans", sans-serif;
+    }
+    .subtitle {
+      margin: 6px 0 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .header-actions {
+      display: inline-flex;
       align-items: center;
+      gap: 8px;
     }
-    label { color: var(--muted); font-size: 13px; }
-    select, button, input[type="number"] {
-      height: 42px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 0 12px;
-      font-size: 15px;
+    .run-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #cad8eb;
+      border-radius: 999px;
+      background: #f2f7fd;
+      color: #2e4d69;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #93a8bd;
+    }
+    .dot.live {
+      background: var(--ok);
+      box-shadow: 0 0 0 6px rgba(30, 154, 98, 0.15);
+    }
+    .help-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid #c9d7e7;
+      background: #ffffff;
+      color: #22445f;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .12s ease;
+    }
+    .help-btn:hover {
+      transform: translateY(-1px);
+      border-color: #b8cbe0;
+      background: #f5faff;
+    }
+    .view {
+      display: none;
+    }
+    .view.active {
+      display: block;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    select, button {
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
       background: #fff;
-    }
-    input[type="number"] {
-      width: 100%;
+      color: #1b374d;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 0 10px;
+      font-family: "IBM Plex Sans", "Noto Sans SC", sans-serif;
     }
     button {
       cursor: pointer;
-      background: #f6f2ec;
-      transition: background .15s ease, transform .15s ease;
+      transition: all .12s ease;
     }
-    button:hover { background: #efe7dc; transform: translateY(-1px); }
-    button.primary {
-      background: var(--accent);
-      color: #fff;
-      border: none;
+    button:hover {
+      transform: translateY(-1px);
+      border-color: #becddd;
     }
-    button.secondary {
-      background: #fff;
-      border: 1px solid var(--border);
-    }
-    button.stop {
-      background: #fee2e2;
-      border-color: #fecaca;
-      color: #991b1b;
-    }
-    .status-grid {
+    .action-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(100px, 1fr));
       gap: 8px;
+      margin-top: 10px;
     }
-    .status-card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      background: linear-gradient(180deg, #fffdf9 0, #f8f2ea 100%);
+    .btn-primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
     }
-    .status-label { font-size: 12px; color: var(--muted); }
-    .status-value { font-size: 20px; font-weight: 800; margin-top: 4px; }
-    .hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
-    .error { color: var(--warn); font-size: 13px; margin-top: 6px; min-height: 18px; }
-    .split {
+    .btn-primary:hover {
+      background: var(--brand-hover);
+      border-color: var(--brand-hover);
+    }
+    .btn-warn {
+      background: var(--warn-bg);
+      border-color: var(--warn-line);
+      color: #8d4b32;
+    }
+    .btn-danger {
+      background: var(--danger-bg);
+      border-color: var(--danger-line);
+      color: #8f2b43;
+    }
+    .hint {
+      margin-top: 8px;
+      color: #35556d;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .error {
+      margin-top: 8px;
+      min-height: 18px;
+      color: #b42e46;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .hero-grid {
       display: grid;
-      grid-template-columns: 1.3fr 0.7fr;
-      gap: 12px;
+      grid-template-columns: 1.2fr 1.2fr 0.8fr 0.8fr;
+      gap: 10px;
+    }
+    .hero-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 12px;
+    }
+    .hero-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .hero-value {
+      margin-top: 6px;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .hero-value.big {
+      font-size: 32px;
+      letter-spacing: -0.02em;
     }
     table {
       width: 100%;
       border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
       font-size: 14px;
     }
     th, td {
-      border-bottom: 1px solid var(--border);
       padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
       text-align: left;
     }
-    tr.active { background: var(--highlight); }
-    .log {
-      background: #f6f1ea;
-      color: #3b342c;
-      border-radius: 12px;
-      border: 1px dashed #e1d6c7;
-      padding: 10px;
-      min-height: 240px;
-      max-height: 240px;
-      overflow: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    th {
+      background: #f2f7fd;
+      color: #35566f;
+      font-weight: 700;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tr.active { background: #fff8ea; }
+    .guide-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .guide-top-buttons {
+      display: inline-flex;
+      gap: 8px;
+    }
+    .tutorial {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.8;
+      color: #2a475d;
+      font-size: 14px;
+    }
+    .guide-action-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 8px;
+    }
+    .diag-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .diag-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      background: #f8fbff;
+    }
+    .diag-key {
       font-size: 12px;
-      line-height: 1.5;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .diag-val {
+      margin-top: 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1b4662;
+    }
+    .log {
+      margin-top: 8px;
+      border: 1px solid #243b4d;
+      border-radius: 10px;
+      background: #101f2d;
+      color: #dcecff;
+      min-height: 260px;
+      max-height: 260px;
+      overflow: auto;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
       white-space: pre-wrap;
     }
-    details summary {
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 6px;
+    @media (max-width: 1020px) {
+      .hero-grid { grid-template-columns: 1fr 1fr; }
     }
-    @media (max-width: 980px) {
-      .controls { grid-template-columns: 1fr 1fr; }
-      .split { grid-template-columns: 1fr; }
-      .status-grid { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 840px) {
+      .field-grid { grid-template-columns: 1fr; }
+      .action-grid { grid-template-columns: 1fr 1fr; }
+      .guide-action-grid { grid-template-columns: 1fr; }
+      .diag-grid { grid-template-columns: 1fr; }
+      .title { font-size: 24px; }
+      .header-row { flex-direction: column; }
+    }
+    @media (max-width: 600px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .guide-top { flex-direction: column; align-items: flex-start; }
+      .guide-top-buttons { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1 class="title">Voiceprint Studio</h1>
-    <p class="subtitle">一键开始识别当前说话人，自动完成入库与高亮展示。</p>
-    <div class="panel">
-      <div class="controls">
-        <label>输入源</label>
-        <select id="source">
-          <option value="microphone">microphone</option>
-          <option value="system">system</option>
-        </select>
-        <label>设备</label>
-        <select id="device"></select>
-        <button id="refresh">刷新设备</button>
-        <button id="start" class="primary">开始</button>
+  <div class="container">
+    <section class="panel">
+      <div class="header-row">
+        <div>
+          <h1 class="title">声纹识别控制台</h1>
+          <p class="subtitle">主界面只保留识别核心；配置、教程和诊断统一放到问号页。</p>
+        </div>
+        <div class="header-actions">
+          <div class="run-chip"><span class="dot" id="runDot"></span><span id="runState">未采集</span></div>
+          <button id="helpBtn" class="help-btn" title="配置与教程">?</button>
+        </div>
       </div>
-      <div class="controls" style="grid-template-columns: 140px 140px 1fr; margin-top: 10px;">
-        <button id="stop" class="stop">停止</button>
-        <button id="reset" class="secondary">清空名单</button>
+    </section>
+
+    <section id="mainView" class="view active">
+      <section class="panel">
+        <h2>识别控制</h2>
+        <div class="field-grid">
+          <div class="field">
+            <label for="source">输入源</label>
+            <select id="source">
+              <option value="microphone">麦克风</option>
+              <option value="system">系统回放</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="device">输入设备</label>
+            <select id="device"></select>
+          </div>
+        </div>
+        <div class="action-grid">
+          <button id="refresh">刷新设备</button>
+          <button id="start" class="btn-primary">开始识别</button>
+          <button id="stop" class="btn-warn">停止识别</button>
+          <button id="reset" class="btn-danger">清空名单</button>
+        </div>
         <div class="hint" id="hint"></div>
-      </div>
-      <div class="error" id="error"></div>
-      <div class="hint" id="setupNotice"></div>
-    </div>
+        <div class="error" id="mainError"></div>
+      </section>
 
-    <div class="panel status-grid">
-      <div class="status-card">
-        <div class="status-label">当前状态</div>
-        <div class="status-value" id="status">Idle</div>
-      </div>
-      <div class="status-card">
-        <div class="status-label">当前说话人</div>
-        <div class="status-value" id="speaker">-</div>
-      </div>
-      <div class="status-card">
-        <div class="status-label">置信度</div>
-        <div class="status-value" id="confidence">-</div>
-      </div>
-      <div class="status-card">
-        <div class="status-label">已注册人数</div>
-        <div class="status-value" id="speakerCount">0</div>
-      </div>
-    </div>
+      <section class="panel">
+        <div class="hero-grid">
+          <div class="hero-card">
+            <div class="hero-label">系统状态</div>
+            <div class="hero-value big" id="status">待机</div>
+          </div>
+          <div class="hero-card">
+            <div class="hero-label">当前说话人</div>
+            <div class="hero-value big" id="speaker">-</div>
+          </div>
+          <div class="hero-card">
+            <div class="hero-label">识别置信度</div>
+            <div class="hero-value" id="confidence">-</div>
+          </div>
+          <div class="hero-card">
+            <div class="hero-label">入库人数</div>
+            <div class="hero-value" id="speakerCount">0</div>
+          </div>
+        </div>
+      </section>
 
-    <div class="split">
-      <div class="panel">
-        <h3 style="margin: 0 0 8px 0;">入库声纹列表</h3>
+      <section class="panel">
+        <h2>说话人列表</h2>
         <table>
           <thead>
-            <tr><th>ID</th><th>名称</th><th>样本数</th><th>置信度</th></tr>
+            <tr><th>ID</th><th>名称</th><th>样本数</th><th>当前置信度</th></tr>
           </thead>
           <tbody id="speakerRows"></tbody>
         </table>
-      </div>
-      <div class="panel">
-        <details>
-          <summary>诊断信息（可选）</summary>
-          <div class="log" id="events"></div>
-        </details>
-      </div>
-    </div>
+      </section>
+    </section>
+
+    <section id="guideView" class="view">
+      <section class="panel">
+        <div class="guide-top">
+          <h2>配置与教程</h2>
+          <div class="guide-top-buttons">
+            <button id="enterMainBtn" class="btn-primary">进入识别界面</button>
+            <button id="backBtn">返回</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>快速教程</h2>
+        <ol class="tutorial">
+          <li>先点“一键配置系统回放”，等待页面提示完成。</li>
+          <li>若提示需要重启，点“重启电脑（可选）”或手动重启。</li>
+          <li>回到识别界面，选择输入源和设备，再点“开始识别”。</li>
+          <li>首次建议连续说几句完整话，便于稳定入库与匹配。</li>
+          <li>同一环境下使用同一设备，识别稳定性更高。</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>系统配置</h2>
+        <div class="guide-action-grid">
+          <button id="setupLoopback">一键配置系统回放</button>
+          <button id="reboot">重启电脑（可选）</button>
+          <button id="refreshDiag">刷新诊断信息</button>
+        </div>
+        <div class="hint" id="setupNotice"></div>
+        <div class="error" id="guideError"></div>
+      </section>
+
+      <section class="panel">
+        <h2>诊断信息</h2>
+        <div class="diag-grid">
+          <div class="diag-item">
+            <div class="diag-key">麦克风设备数量</div>
+            <div class="diag-val" id="diagMicCount">-</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-key">系统回环设备数量</div>
+            <div class="diag-val" id="diagSystemCount">-</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-key">BlackHole 驱动状态</div>
+            <div class="diag-val" id="diagBlackHole">-</div>
+          </div>
+          <div class="diag-item">
+            <div class="diag-key">当前输入源</div>
+            <div class="diag-val" id="diagSource">麦克风</div>
+          </div>
+        </div>
+        <div class="diag-item">
+          <div class="diag-key">设备快照</div>
+          <div class="diag-val" id="diagDevices">-</div>
+        </div>
+        <div class="log" id="events"></div>
+      </section>
+    </section>
   </div>
 
   <script>
+    const mainViewEl = document.getElementById('mainView');
+    const guideViewEl = document.getElementById('guideView');
+    const helpBtn = document.getElementById('helpBtn');
+    const backBtn = document.getElementById('backBtn');
+    const enterMainBtn = document.getElementById('enterMainBtn');
+
     const sourceEl = document.getElementById('source');
     const deviceEl = document.getElementById('device');
     const statusEl = document.getElementById('status');
@@ -225,20 +482,137 @@ HTML = """<!doctype html>
     const confidenceEl = document.getElementById('confidence');
     const speakerCountEl = document.getElementById('speakerCount');
     const rowsEl = document.getElementById('speakerRows');
-    const eventsEl = document.getElementById('events');
-    const errorEl = document.getElementById('error');
+
+    const runDotEl = document.getElementById('runDot');
+    const runStateEl = document.getElementById('runState');
     const hintEl = document.getElementById('hint');
+    const mainErrorEl = document.getElementById('mainError');
+
     const setupNoticeEl = document.getElementById('setupNotice');
+    const guideErrorEl = document.getElementById('guideError');
+    const eventsEl = document.getElementById('events');
+
+    const diagMicCountEl = document.getElementById('diagMicCount');
+    const diagSystemCountEl = document.getElementById('diagSystemCount');
+    const diagBlackHoleEl = document.getElementById('diagBlackHole');
+    const diagSourceEl = document.getElementById('diagSource');
+    const diagDevicesEl = document.getElementById('diagDevices');
+
+    const refreshBtn = document.getElementById('refresh');
     const startBtn = document.getElementById('start');
     const stopBtn = document.getElementById('stop');
     const resetBtn = document.getElementById('reset');
-    const refreshBtn = document.getElementById('refresh');
+
+    const setupBtn = document.getElementById('setupLoopback');
+    const rebootBtn = document.getElementById('reboot');
+    const refreshDiagBtn = document.getElementById('refreshDiag');
+
+    const statusMap = {
+      'Idle': '待机',
+      'Starting': '启动中',
+      'Stopped': '已停止',
+      'Library Reset': '名单已清空',
+      'Matched Speaker': '已识别到已知说话人',
+      'New Speaker Registered': '已自动入库新说话人',
+      'Human Speech (Unknown)': '检测到人声（未识别）',
+      'Background Noise': '背景噪声',
+      'Silence': '静音',
+      'Error': '错误',
+    };
+
+    const eventTypeMap = {
+      'match': '匹配',
+      'new_speaker': '新说话人',
+      'unknown_speech': '未知人声',
+      'noise': '噪声',
+      'silence': '静音',
+    };
+
+    function sourceLabel(value) {
+      return value === 'system' ? '系统回放' : '麦克风';
+    }
+
+    function localizeStatus(value) {
+      if (!value) return '-';
+      return statusMap[value] || value;
+    }
+
+    function localizeEventLine(line) {
+      const text = String(line || '');
+      if (text.includes('service starting')) return '服务启动中';
+      if (text.includes('service stopped')) return '服务已停止';
+      if (text.includes('tuning loaded')) return text.replace('tuning loaded', '已加载调优参数');
+      if (text.includes('loopback')) {
+        return text
+          .replace('loopback setup started', '回环配置任务已启动')
+          .replace('loopback setup error', '回环配置失败')
+          .replace('loopback setup', '回环配置')
+          .replace('loopback step', '配置步骤')
+          .replace('loopback log', '配置日志');
+      }
+
+      let out = text;
+      out = out.replace(/speaker=/g, '说话人=');
+      out = out.replace(/score=/g, '分数=');
+      out = out.replace(/confidence=/g, '置信度=');
+      out = out.replace(/source=/g, '来源=');
+      out = out.replace(/microphone/g, '麦克风');
+      out = out.replace(/system/g, '系统回放');
+      for (const [key, val] of Object.entries(eventTypeMap)) {
+        out = out.replace(new RegExp(`^${key}\\s*`, 'i'), `${val} `);
+      }
+      return out;
+    }
+
+    function showView(name, updateHash = true) {
+      const isGuide = name === 'guide';
+      mainViewEl.classList.toggle('active', !isGuide);
+      guideViewEl.classList.toggle('active', isGuide);
+      if (updateHash) {
+        window.location.hash = isGuide ? '#guide' : '#main';
+      }
+      if (isGuide) {
+        refreshDiagnostics();
+      }
+    }
 
     function setHint() {
       if (sourceEl.value === 'system') {
-        hintEl.textContent = 'system 模式：请把系统输出切到“多输出设备(耳机+BlackHole)”，本程序选择 BlackHole 输入';
+        hintEl.textContent = '系统回放模式：建议先到问号页完成回环配置，再返回识别界面。';
       } else {
-        hintEl.textContent = 'microphone 模式直接监听麦克风输入';
+        hintEl.textContent = '麦克风模式：建议使用内置或有线麦克风，避免蓝牙免提低增益输入。';
+      }
+      diagSourceEl.textContent = sourceLabel(sourceEl.value);
+    }
+
+    function setRunning(running) {
+      runStateEl.textContent = running ? '采集中' : '未采集';
+      runDotEl.classList.toggle('live', !!running);
+    }
+
+    function setError(message) {
+      const text = message || '';
+      mainErrorEl.textContent = text;
+      guideErrorEl.textContent = text;
+    }
+
+    async function refreshDiagnostics() {
+      try {
+        const resp = await fetch('/api/diagnostics');
+        const data = await resp.json();
+        if (!resp.ok) return;
+
+        diagMicCountEl.textContent = String(data.microphoneCount ?? 0);
+        diagSystemCountEl.textContent = String(data.systemCount ?? 0);
+        diagBlackHoleEl.textContent = data.blackholeDriverPresent ? '已安装' : '未检测到';
+
+        const micNames = (data.microphoneDevices || []).slice(0, 3).map((item) => item.name).join('、');
+        const sysNames = (data.systemDevices || []).slice(0, 3).map((item) => item.name).join('、');
+        const micText = micNames ? `麦克风：${micNames}` : '麦克风：无';
+        const sysText = sysNames ? `系统回放：${sysNames}` : '系统回放：无';
+        diagDevicesEl.textContent = `${micText} ｜ ${sysText}`;
+      } catch (err) {
+        diagDevicesEl.textContent = '诊断接口暂不可用';
       }
     }
 
@@ -247,48 +621,55 @@ HTML = """<!doctype html>
       const source = sourceEl.value;
       const resp = await fetch(`/api/devices?source=${encodeURIComponent(source)}`);
       const data = await resp.json();
+
       deviceEl.innerHTML = '';
       const autoOpt = document.createElement('option');
       autoOpt.value = '';
-      autoOpt.textContent = '自动选择';
+      autoOpt.textContent = '自动选择（推荐）';
       deviceEl.appendChild(autoOpt);
+
       startBtn.disabled = false;
-      errorEl.textContent = '';
-      for (const dev of data.devices) {
+      setError('');
+
+      for (const dev of (data.devices || [])) {
         const opt = document.createElement('option');
         opt.value = String(dev.index);
         opt.textContent = `[${dev.index}] ${dev.name}`;
         deviceEl.appendChild(opt);
       }
-      if (data.devices.length === 0) {
+
+      if (!data.devices || data.devices.length === 0) {
         const opt = document.createElement('option');
         opt.value = '';
         opt.textContent = '无可用输入设备';
         deviceEl.appendChild(opt);
         startBtn.disabled = true;
         if (source === 'system') {
-          errorEl.textContent = '未检测到系统回环输入设备。请先安装/配置 BlackHole 或 Stereo Mix。';
+          setError('未检测到系统回环输入。请到问号页完成配置或手动安装 BlackHole / Stereo Mix / VB-Cable。');
         }
       } else if (source === 'microphone' && data.devices.length > 1) {
         const autoResp = await fetch('/api/auto-select-device', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({source})
+          body: JSON.stringify({source}),
         });
         const autoData = await autoResp.json();
         if (autoResp.ok && autoData.ok && autoData.device) {
           deviceEl.value = String(autoData.device.index);
         }
       }
+
+      await refreshDiagnostics();
     }
 
     async function start() {
-      errorEl.textContent = '';
+      setError('');
       const deviceIndex = deviceEl.value === '' ? '' : parseInt(deviceEl.value, 10);
       if (deviceEl.value !== '' && Number.isNaN(deviceIndex)) {
-        errorEl.textContent = '请先选择输入设备';
+        setError('请先选择有效输入设备。');
         return;
       }
+
       const payload = {
         source: sourceEl.value,
         scope: 'global',
@@ -297,11 +678,11 @@ HTML = """<!doctype html>
       const resp = await fetch('/api/start', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const data = await resp.json();
       if (!resp.ok) {
-        errorEl.textContent = data.error || '启动失败';
+        setError(data.error || '启动失败。');
       }
     }
 
@@ -310,63 +691,122 @@ HTML = """<!doctype html>
     }
 
     async function resetLibrary() {
-      errorEl.textContent = '';
-      const payload = { scope: 'global' };
+      setError('');
       const resp = await fetch('/api/reset', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
+        body: JSON.stringify({scope: 'global'}),
       });
       const data = await resp.json();
       if (!resp.ok) {
-        errorEl.textContent = data.error || '清空失败';
+        setError(data.error || '清空名单失败。');
+      }
+    }
+
+    async function setupLoopback() {
+      setError('');
+      setupNoticeEl.textContent = '正在执行回环设备配置，请稍候...';
+      const resp = await fetch('/api/setup-loopback', {method: 'POST'});
+      const data = await resp.json();
+      if (!resp.ok || !data.started) {
+        setError(data.error || data.message || '回环配置任务启动失败。');
+      }
+    }
+
+    async function rebootSystem() {
+      setError('');
+      const confirmed = window.confirm('将请求系统重启。请先保存其他工作，确认继续吗？');
+      if (!confirmed) return;
+      const resp = await fetch('/api/reboot', {method: 'POST'});
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data.error || '重启请求失败。');
+      } else {
+        setupNoticeEl.textContent = data.message || '已发送重启请求。';
       }
     }
 
     function renderSpeakers(speakers) {
       rowsEl.innerHTML = '';
+      if (!speakers.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4">暂无已入库说话人</td>';
+        rowsEl.appendChild(tr);
+        return;
+      }
       for (const sp of speakers) {
         const tr = document.createElement('tr');
         if (sp.active) tr.classList.add('active');
-        tr.innerHTML = `<td>${sp.id ?? '-'}</td><td>${sp.name}</td><td>${sp.samples}</td><td>${sp.confidence}</td>`;
+        tr.innerHTML = `<td>${sp.id ?? '-'}</td><td>${sp.name || '-'}</td><td>${sp.samples ?? '-'}</td><td>${sp.confidence || '-'}</td>`;
         rowsEl.appendChild(tr);
       }
     }
 
     function renderEvents(lines) {
-      eventsEl.textContent = lines.join('\\n');
+      const localized = (lines || []).map((line) => localizeEventLine(line));
+      eventsEl.textContent = localized.join('\\n');
       eventsEl.scrollTop = eventsEl.scrollHeight;
     }
 
     async function pollState() {
       try {
-      const resp = await fetch('/api/state');
-      const state = await resp.json();
-        statusEl.textContent = state.status;
-        speakerEl.textContent = state.currentSpeaker;
-        confidenceEl.textContent = state.confidence;
-      speakerCountEl.textContent = (state.speakers || []).length;
-      renderSpeakers(state.speakers || []);
-      renderEvents(state.events || []);
-      errorEl.textContent = state.error || '';
-      setupNoticeEl.textContent = state.setupNotice || '';
-      startBtn.disabled = !!state.running;
-      stopBtn.disabled = !state.running;
-    } catch (err) {
-      errorEl.textContent = '与本地服务通信失败';
+        const resp = await fetch('/api/state');
+        const state = await resp.json();
+
+        statusEl.textContent = localizeStatus(state.status);
+        speakerEl.textContent = state.currentSpeaker || '-';
+        confidenceEl.textContent = state.confidence || '-';
+        speakerCountEl.textContent = String((state.speakers || []).length);
+        renderSpeakers(state.speakers || []);
+        renderEvents(state.events || []);
+
+        setError(state.error || '');
+        setupNoticeEl.textContent = state.setupNotice || '';
+        startBtn.disabled = !!state.running;
+        stopBtn.disabled = !state.running;
+        setupBtn.disabled = !!state.setupRunning;
+        setRunning(!!state.running);
+      } catch (err) {
+        setError('无法连接本地服务，请确认后端进程仍在运行。');
+      }
     }
-    }
+
+    helpBtn.addEventListener('click', () => showView('guide'));
+    backBtn.addEventListener('click', () => showView('main'));
+    enterMainBtn.addEventListener('click', () => showView('main'));
 
     sourceEl.addEventListener('change', refreshDevices);
     refreshBtn.addEventListener('click', refreshDevices);
     startBtn.addEventListener('click', start);
     stopBtn.addEventListener('click', stop);
     resetBtn.addEventListener('click', resetLibrary);
+    setupBtn.addEventListener('click', setupLoopback);
+    rebootBtn.addEventListener('click', rebootSystem);
+    refreshDiagBtn.addEventListener('click', refreshDiagnostics);
+
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash === '#guide') {
+        showView('guide', false);
+      } else {
+        showView('main', false);
+      }
+    });
 
     setHint();
+    setRunning(false);
+    if (window.location.hash === '#guide') {
+      showView('guide', false);
+    } else {
+      showView('main', false);
+    }
     refreshDevices();
     pollState();
     setInterval(pollState, 500);
+    setInterval(() => {
+      if (guideViewEl.classList.contains('active')) {
+        refreshDiagnostics();
+      }
+    }, 4000);
   </script>
 </body>
 </html>
