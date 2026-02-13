@@ -10,6 +10,7 @@ from voice_recognition.audio import AudioSource
 from voice_recognition.audio.loopback_setup import LoopbackSetupResult
 from voice_recognition.core.models import EventType, RecognitionEvent, RecognitionScope, Speaker
 from voice_recognition.live_service import LiveUpdate
+from voice_recognition.storage.factory import build_repository
 from voice_recognition.web_controller import WebController
 
 
@@ -184,6 +185,48 @@ class WebControllerTests(unittest.TestCase):
             ):
                 result = controller.request_system_reboot()
             self.assertTrue(bool(result["ok"]))
+
+    def test_rename_speaker_updates_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            db_path = Path(directory) / "speakers.db"
+            controller = WebController(db_path=db_path, sample_rate=16000)
+            repo = build_repository(scope=RecognitionScope.GLOBAL, db_path=db_path)
+            try:
+                created = repo.create_speaker(
+                    Speaker(id=None, name="新人1", centroid=(1.0, 0.0, 0.0), sample_count=4)
+                )
+            finally:
+                repo.close()
+
+            result = controller.rename_speaker(speaker_id=int(created.id), new_name="张三")
+            self.assertTrue(bool(result["ok"]))
+            self.assertEqual("张三", str(result["name"]))
+            names = [str(item["name"]) for item in controller.snapshot()["speakers"]]
+            self.assertIn("张三", names)
+
+    def test_rename_speaker_rejects_duplicate_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            db_path = Path(directory) / "speakers.db"
+            controller = WebController(db_path=db_path, sample_rate=16000)
+            repo = build_repository(scope=RecognitionScope.GLOBAL, db_path=db_path)
+            try:
+                repo.create_speaker(
+                    Speaker(id=None, name="新人1", centroid=(1.0, 0.0, 0.0), sample_count=4)
+                )
+                two = repo.create_speaker(
+                    Speaker(id=None, name="新人2", centroid=(0.0, 1.0, 0.0), sample_count=3)
+                )
+            finally:
+                repo.close()
+
+            with self.assertRaisesRegex(ValueError, "名称已存在"):
+                controller.rename_speaker(speaker_id=int(two.id), new_name="新人1")
+
+    def test_rename_speaker_rejects_empty_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            controller = WebController(db_path=Path(directory) / "speakers.db", sample_rate=16000)
+            with self.assertRaisesRegex(ValueError, "名称不能为空"):
+                controller.rename_speaker(speaker_id=1, new_name="   ")
 
     def test_start_applies_embedding_override_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

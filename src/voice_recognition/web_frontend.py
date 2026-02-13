@@ -255,6 +255,25 @@ HTML = """<!doctype html>
     }
     tbody tr:last-child td { border-bottom: none; }
     tr.active { background: #fff8ea; }
+    .inline-name-input {
+      width: 100%;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid #b7c9de;
+      padding: 0 8px;
+      font-size: 13px;
+      color: #16354b;
+      background: #fff;
+      font-family: "IBM Plex Sans", "Noto Sans SC", sans-serif;
+    }
+    .name-editable {
+      cursor: text;
+    }
+    .name-editable:hover {
+      text-decoration: underline;
+      text-decoration-color: #9ab5cf;
+      text-underline-offset: 2px;
+    }
     .guide-top {
       display: flex;
       justify-content: space-between;
@@ -397,6 +416,7 @@ HTML = """<!doctype html>
 
       <section class="panel">
         <h2>说话人列表</h2>
+        <div class="hint">双击名称可编辑，点任意别处退出（Enter 保存，Esc 取消）。</div>
         <table>
           <thead>
             <tr><th>ID</th><th>名称</th><th>样本数</th><th>当前置信度</th></tr>
@@ -527,6 +547,10 @@ HTML = """<!doctype html>
       'noise': '噪声',
       'silence': '静音',
     };
+    let latestSpeakers = [];
+    let editingSpeakerId = null;
+    let editingOriginalName = '';
+    let renameSubmitting = false;
 
     function sourceLabel(value) {
       return value === 'system' ? '系统回放' : '麦克风';
@@ -703,6 +727,70 @@ HTML = """<!doctype html>
       }
     }
 
+    function startInlineRename(speakerId, currentName) {
+      if (!Number.isInteger(speakerId) || speakerId <= 0) return;
+      if (renameSubmitting) return;
+      editingSpeakerId = speakerId;
+      editingOriginalName = String(currentName || '').trim();
+      renderSpeakers(latestSpeakers);
+      const input = rowsEl.querySelector(`input[data-rename-id="${speakerId}"]`);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+
+    function cancelInlineRename() {
+      if (renameSubmitting) return;
+      editingSpeakerId = null;
+      editingOriginalName = '';
+      renderSpeakers(latestSpeakers);
+    }
+
+    async function submitSpeakerRename(speakerId, name) {
+      const resp = await fetch('/api/rename-speaker', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({speakerId, name}),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || '改名失败。');
+      }
+      return data;
+    }
+
+    async function confirmInlineRename(speakerId) {
+      if (!Number.isInteger(speakerId) || speakerId <= 0) return;
+      const input = rowsEl.querySelector(`input[data-rename-id="${speakerId}"]`);
+      if (!input) return;
+      const name = String(input.value || '').trim();
+      if (!name) {
+        setError('名称不能为空。');
+        cancelInlineRename();
+        return;
+      }
+      if (name === editingOriginalName) {
+        cancelInlineRename();
+        return;
+      }
+      setError('');
+      renameSubmitting = true;
+      input.disabled = true;
+      try {
+        await submitSpeakerRename(speakerId, name);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '改名失败。');
+        renameSubmitting = false;
+        cancelInlineRename();
+        return;
+      }
+      renameSubmitting = false;
+      editingSpeakerId = null;
+      editingOriginalName = '';
+      await pollState();
+    }
+
     async function setupLoopback() {
       setError('');
       setupNoticeEl.textContent = '正在执行回环设备配置，请稍候...';
@@ -737,7 +825,52 @@ HTML = """<!doctype html>
       for (const sp of speakers) {
         const tr = document.createElement('tr');
         if (sp.active) tr.classList.add('active');
-        tr.innerHTML = `<td>${sp.id ?? '-'}</td><td>${sp.name || '-'}</td><td>${sp.samples ?? '-'}</td><td>${sp.confidence || '-'}</td>`;
+        const idCell = document.createElement('td');
+        idCell.textContent = String(sp.id ?? '-');
+        const nameCell = document.createElement('td');
+        const samplesCell = document.createElement('td');
+        samplesCell.textContent = String(sp.samples ?? '-');
+        const confidenceCell = document.createElement('td');
+        confidenceCell.textContent = String(sp.confidence || '-');
+        const speakerId = Number(sp.id);
+        if (Number.isInteger(speakerId) && speakerId > 0) {
+          const currentName = String(sp.name || '-');
+          const isEditing = editingSpeakerId === speakerId;
+          if (isEditing) {
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'inline-name-input';
+            nameInput.value = currentName;
+            nameInput.maxLength = 40;
+            nameInput.setAttribute('data-rename-id', String(speakerId));
+            nameInput.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                confirmInlineRename(speakerId);
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelInlineRename();
+              }
+            });
+            nameInput.addEventListener('blur', () => {
+              if (editingSpeakerId === speakerId && !renameSubmitting) {
+                confirmInlineRename(speakerId);
+              }
+            });
+            nameCell.appendChild(nameInput);
+          } else {
+            nameCell.textContent = currentName;
+            nameCell.classList.add('name-editable');
+            nameCell.title = '双击可改名';
+            nameCell.addEventListener('dblclick', () => startInlineRename(speakerId, currentName));
+          }
+        } else {
+          nameCell.textContent = String(sp.name || '-');
+        }
+        tr.appendChild(idCell);
+        tr.appendChild(nameCell);
+        tr.appendChild(samplesCell);
+        tr.appendChild(confidenceCell);
         rowsEl.appendChild(tr);
       }
     }
@@ -757,7 +890,18 @@ HTML = """<!doctype html>
         speakerEl.textContent = state.currentSpeaker || '-';
         confidenceEl.textContent = state.confidence || '-';
         speakerCountEl.textContent = String((state.speakers || []).length);
-        renderSpeakers(state.speakers || []);
+        latestSpeakers = state.speakers || [];
+        if (editingSpeakerId === null) {
+          renderSpeakers(latestSpeakers);
+        } else {
+          const editingStillExists = latestSpeakers.some((sp) => Number(sp.id) === editingSpeakerId);
+          if (!editingStillExists) {
+            editingSpeakerId = null;
+            editingOriginalName = '';
+            renameSubmitting = false;
+            renderSpeakers(latestSpeakers);
+          }
+        }
         renderEvents(state.events || []);
 
         setError(state.error || '');
@@ -938,6 +1082,19 @@ class FrontendServer:
                         scope = RecognitionScope(str(payload.get("scope", RecognitionScope.GLOBAL.value)))
                         controller.reset_library(scope=scope)
                         self._respond_json({"ok": True})
+                    except Exception as exc:
+                        self._respond_json({"ok": False, "error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+                    return
+                if parsed.path == "/api/rename-speaker":
+                    payload = self._read_json()
+                    try:
+                        raw_speaker_id = payload.get("speakerId")
+                        if raw_speaker_id is None or str(raw_speaker_id).strip() == "":
+                            raise ValueError("缺少 speakerId 参数。")
+                        speaker_id = int(raw_speaker_id)
+                        name = str(payload.get("name", ""))
+                        result = controller.rename_speaker(speaker_id=speaker_id, new_name=name)
+                        self._respond_json(result, status=HTTPStatus.OK)
                     except Exception as exc:
                         self._respond_json({"ok": False, "error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                     return

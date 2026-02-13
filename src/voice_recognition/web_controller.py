@@ -10,8 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from voice_recognition.audio import AudioInputManager, AudioSource, LoopbackSetupAssistant
-from voice_recognition.core.models import EventType, RecognitionEvent, RecognitionScope, Speaker
+from voice_recognition.core.models import EventType, RecognitionEvent, RecognitionScope, Speaker, utc_now_iso
 from voice_recognition.live_service import LiveConfig, LiveRecognitionService, LiveUpdate
+from voice_recognition.storage.factory import build_repository
 
 
 @dataclass(slots=True)
@@ -311,6 +312,41 @@ class WebController:
             self._state.error = None
             self._state.status = "Library Reset"
             self._append_event(f"library reset ({scope.value})")
+
+    def rename_speaker(self, speaker_id: int, new_name: str) -> dict[str, object]:
+        speaker_name = str(new_name or "").strip()
+        if not speaker_name:
+            raise ValueError("名称不能为空。")
+        if len(speaker_name) > 40:
+            raise ValueError("名称过长，请控制在 40 个字符以内。")
+
+        repository = build_repository(scope=RecognitionScope.GLOBAL, db_path=self.db_path)
+        try:
+            speakers = repository.list_speakers()
+            target = next((speaker for speaker in speakers if speaker.id == speaker_id), None)
+            if target is None:
+                raise ValueError(f"找不到说话人 ID: {speaker_id}")
+            if any(
+                speaker.id != speaker_id and speaker.name.strip().lower() == speaker_name.lower()
+                for speaker in speakers
+            ):
+                raise ValueError("名称已存在，请使用其他名称。")
+
+            old_name = target.name
+            target.name = speaker_name
+            target.updated_at = utc_now_iso()
+            repository.update_speaker(target)
+            latest = repository.list_speakers()
+        finally:
+            repository.close()
+
+        with self._lock:
+            if self._state.active_speaker_id == speaker_id:
+                self._state.current_speaker = speaker_name
+            self._state.speakers = self._speaker_rows(latest)
+            self._append_event(f"speaker renamed: id={speaker_id} {old_name}->{speaker_name}")
+
+        return {"ok": True, "speakerId": speaker_id, "name": speaker_name}
 
     def snapshot(self) -> dict[str, object]:
         self._drain_updates()
