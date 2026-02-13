@@ -193,7 +193,14 @@ class WebControllerTests(unittest.TestCase):
             def _fake_start(config):
                 captured["config"] = config
 
-            with patch.object(controller.service, "start", side_effect=_fake_start):
+            with (
+                patch.object(
+                    controller,
+                    "list_devices",
+                    return_value=[{"index": 2, "name": "Mic B", "channels": 1, "sampleRate": 16000}],
+                ),
+                patch.object(controller.service, "start", side_effect=_fake_start),
+            ):
                 controller.start(
                     scope=RecognitionScope.SESSION,
                     source=AudioSource.MICROPHONE,

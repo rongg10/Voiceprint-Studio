@@ -66,6 +66,10 @@ class LiveServiceTests(unittest.TestCase):
         with patch("voice_recognition.live_service.SignalProcessor", new=_DummyProcessor):
             _, engine = service._build_runtime_components(config=config, repository=repo)
         self.assertLess(engine.enrollment.config.new_speaker_threshold, engine.matcher.config.match_threshold)
+        self.assertGreaterEqual(
+            engine.matcher.config.match_threshold - engine.enrollment.config.new_speaker_threshold,
+            0.079,
+        )
         repo.close()
 
     def test_run_reports_error_when_device_initialization_fails(self) -> None:

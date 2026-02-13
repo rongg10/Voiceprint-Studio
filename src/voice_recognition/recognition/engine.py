@@ -124,6 +124,7 @@ class RecognitionEngine:
             return event
 
         decision = self.matcher.match(frame.embedding, speakers)
+        score_margin = self._score_margin(decision.score, decision.second_best_score)
         ambiguous = (
             decision.second_best_score is not None
             and (decision.score - decision.second_best_score) < self.matcher.config.min_margin
@@ -161,28 +162,30 @@ class RecognitionEngine:
             self.repository.save_event(event)
             return event
 
-        soft_threshold = self.soft_match_threshold
-        if known_count <= 1:
-            # Bootstrap phase: tolerate slightly lower match scores to avoid "unknown forever".
-            soft_threshold = max(0.55, soft_threshold - 0.06)
-        if decision.top_speaker is not None and decision.score >= soft_threshold and not ambiguous:
-            updated = decision.top_speaker
-            soft_update_threshold = max(self.soft_match_threshold + 0.06, self.centroid_update_threshold - 0.06)
-            if decision.score >= soft_update_threshold:
-                updated = self._update_speaker(decision.top_speaker, frame.embedding)
+        soft_score_threshold = self._effective_soft_score_threshold(known_speaker_count=known_count)
+        soft_confidence_floor = self._effective_soft_confidence_floor(known_speaker_count=known_count)
+        soft_margin_floor = self._effective_soft_margin_floor(known_speaker_count=known_count)
+        if (
+            decision.top_speaker is not None
+            and decision.score >= soft_score_threshold
+            and decision.confidence >= soft_confidence_floor
+            and score_margin >= soft_margin_floor
+            and not ambiguous
+        ):
+            matched = decision.top_speaker
             event = RecognitionEvent(
                 event_type=EventType.MATCH,
                 scope=self.scope,
                 source=frame.source,
-                speaker_id=updated.id,
-                speaker_name=updated.name,
+                speaker_id=matched.id,
+                speaker_name=matched.name,
                 score=round(decision.score, 6),
                 confidence=round(decision.confidence, 2),
                 details=self._merge_details("soft_match", self._scoring_details(decision), skipped_detail),
             )
             self.enrollment.reset(reason="soft_matched_known_speaker")
             self._last_match_ts = time.monotonic()
-            self._last_match_speaker_id = updated.id
+            self._last_match_speaker_id = matched.id
             self.repository.save_event(event)
             return event
 
@@ -220,24 +223,41 @@ class RecognitionEngine:
                     local_best = self.matcher._best_score_for_speaker(frame.embedding, last_speaker)
                     if local_best is not None:
                         recent_score, _ = local_best
+                        recent_confidence = self.matcher._to_confidence(recent_score)
                         threshold = self.recent_match_threshold or max(0.0, self.soft_match_threshold - 0.10)
-                        if recent_score >= threshold:
-                            updated = last_speaker
-                            if recent_score >= self.centroid_update_threshold:
-                                updated = self._update_speaker(last_speaker, frame.embedding)
+                        threshold = max(
+                            threshold,
+                            self._effective_soft_score_threshold(known_speaker_count=known_count) - 0.03,
+                        )
+                        confidence_floor = max(
+                            0.0,
+                            self._effective_soft_confidence_floor(known_speaker_count=known_count) - 5.0,
+                        )
+                        allow_recent_match = recent_score >= threshold and recent_confidence >= confidence_floor
+                        if (
+                            allow_recent_match
+                            and decision.top_speaker is not None
+                            and decision.top_speaker.id != last_speaker.id
+                        ):
+                            competing = self.matcher._best_score_for_speaker(frame.embedding, decision.top_speaker)
+                            if competing is not None:
+                                competing_score, _ = competing
+                                if (competing_score - recent_score) >= max(self.matcher.config.min_margin, 0.04):
+                                    allow_recent_match = False
+                        if allow_recent_match:
                             event = RecognitionEvent(
                                 event_type=EventType.MATCH,
                                 scope=self.scope,
                                 source=frame.source,
-                                speaker_id=updated.id,
-                                speaker_name=updated.name,
+                                speaker_id=last_speaker.id,
+                                speaker_name=last_speaker.name,
                                 score=round(recent_score, 6),
-                                confidence=round(self.matcher._to_confidence(recent_score), 2),
+                                confidence=round(recent_confidence, 2),
                                 details=self._merge_details("recent_match", skipped_detail),
                             )
                             self.enrollment.reset(reason="recent_matched_known_speaker")
                             self._last_match_ts = time.monotonic()
-                            self._last_match_speaker_id = updated.id
+                            self._last_match_speaker_id = last_speaker.id
                             self.repository.save_event(event)
                             return event
 
@@ -367,6 +387,38 @@ class RecognitionEngine:
         if not merged:
             return None
         return "; ".join(merged)
+
+    @staticmethod
+    def _score_margin(score: float, second_best_score: float | None) -> float:
+        if second_best_score is None:
+            return 1.0
+        return score - second_best_score
+
+    def _effective_soft_score_threshold(self, known_speaker_count: int) -> float:
+        gap = 0.12
+        if known_speaker_count >= 12:
+            gap = 0.05
+        elif known_speaker_count >= 6:
+            gap = 0.08
+        return max(self.soft_match_threshold, self.matcher.config.match_threshold - gap)
+
+    @staticmethod
+    def _effective_soft_confidence_floor(known_speaker_count: int) -> float:
+        if known_speaker_count >= 12:
+            return 30.0
+        if known_speaker_count >= 6:
+            return 20.0
+        if known_speaker_count >= 3:
+            return 10.0
+        return 0.0
+
+    def _effective_soft_margin_floor(self, known_speaker_count: int) -> float:
+        floor = self.matcher.config.min_margin
+        if known_speaker_count >= 12:
+            return max(floor, 0.08)
+        if known_speaker_count >= 6:
+            return max(floor, 0.06)
+        return floor
 
     @staticmethod
     def _scoring_details(decision) -> str | None:

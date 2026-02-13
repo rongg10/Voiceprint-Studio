@@ -273,6 +273,7 @@ def _collect_stats(file_embeddings) -> CalibrationStats:
 
 
 def _recommend_thresholds(stats: CalibrationStats) -> dict[str, float]:
+    min_threshold_gap = 0.08
     match_threshold = _percentile(stats.non_target_scores, 99.0)
     if match_threshold is None:
         match_threshold = 0.82
@@ -281,7 +282,8 @@ def _recommend_thresholds(stats: CalibrationStats) -> dict[str, float]:
     new_speaker_threshold = _percentile(stats.target_scores, 5.0)
     if new_speaker_threshold is None:
         new_speaker_threshold = match_threshold - 0.10
-    new_speaker_threshold = _clamp(new_speaker_threshold, 0.40, match_threshold - 0.02)
+    new_speaker_upper = max(0.40, match_threshold - min_threshold_gap)
+    new_speaker_threshold = _clamp(new_speaker_threshold, 0.40, new_speaker_upper)
 
     min_cluster_similarity = _percentile(stats.stability_scores, 10.0)
     if min_cluster_similarity is None:

@@ -217,6 +217,70 @@ class RecognitionEngineTests(unittest.TestCase):
         self.assertEqual("新人1", event.speaker_name)
         self.assertIn("soft_match", event.details or "")
 
+    def test_soft_match_does_not_update_speaker_profile(self) -> None:
+        from voice_recognition.core.models import Speaker
+
+        self.repository.create_speaker(
+            Speaker(id=None, name="新人1", centroid=(1.0, 0.0, 0.0), sample_count=8)
+        )
+        engine = RecognitionEngine(
+            repository=self.repository,
+            scope=RecognitionScope.SESSION,
+            matcher=SpeakerMatcher(
+                MatcherConfig(match_threshold=0.90, confidence_low=0.70, confidence_high=0.995)
+            ),
+            enrollment=AutoEnrollmentManager(
+                EnrollmentConfig(
+                    newcomer_prefix="新人",
+                    min_segments=2,
+                    min_cluster_similarity=0.92,
+                    new_speaker_threshold=0.88,
+                    safety_similarity_threshold=0.92,
+                )
+            ),
+            soft_match_threshold=0.75,
+        )
+        emb = (0.86, math.sqrt(max(0.0, 1.0 - 0.86 * 0.86)), 0.0)
+        event = engine.process(FrameInference(signal=SignalType.SPEECH, embedding=emb, source="soft_high.mp3"))
+        self.assertEqual(EventType.MATCH, event.event_type)
+        self.assertIn("soft_match", event.details or "")
+        speakers = self.repository.list_speakers()
+        self.assertEqual(8, speakers[0].sample_count)
+
+    def test_large_library_rejects_weak_soft_match(self) -> None:
+        from voice_recognition.core.models import Speaker
+
+        dim = 16
+        for index in range(12):
+            centroid = tuple(1.0 if idx == index else 0.0 for idx in range(dim))
+            self.repository.create_speaker(
+                Speaker(id=None, name=f"新人{index + 1}", centroid=centroid, sample_count=6)
+            )
+        engine = RecognitionEngine(
+            repository=self.repository,
+            scope=RecognitionScope.SESSION,
+            matcher=SpeakerMatcher(
+                MatcherConfig(match_threshold=0.82, confidence_low=0.50, confidence_high=0.92, min_margin=0.05)
+            ),
+            enrollment=AutoEnrollmentManager(
+                EnrollmentConfig(
+                    newcomer_prefix="新人",
+                    min_segments=3,
+                    min_cluster_similarity=0.90,
+                    new_speaker_threshold=0.72,
+                    safety_similarity_threshold=0.78,
+                )
+            ),
+            soft_match_threshold=0.68,
+        )
+        emb = [0.0] * dim
+        emb[0] = 0.70
+        emb[-1] = math.sqrt(max(0.0, 1.0 - emb[0] * emb[0]))
+        event = engine.process(
+            FrameInference(signal=SignalType.SPEECH, embedding=tuple(emb), source="weak_soft_large_lib.mp3")
+        )
+        self.assertEqual(EventType.UNKNOWN_SPEECH, event.event_type)
+
 
 if __name__ == "__main__":
     unittest.main()

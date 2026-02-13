@@ -171,7 +171,11 @@ class LiveRecognitionService:
             for model in config.embedding_models
         )
         match_threshold = self._clamp(config.match_threshold, 0.50, 0.995)
-        new_speaker_threshold = self._clamp(config.new_speaker_threshold, 0.40, match_threshold - 0.02)
+        min_threshold_gap = 0.08
+        new_speaker_upper = match_threshold - min_threshold_gap
+        if new_speaker_upper < 0.40:
+            new_speaker_upper = match_threshold - 0.02
+        new_speaker_threshold = self._clamp(config.new_speaker_threshold, 0.40, new_speaker_upper)
         min_match_margin = self._clamp(config.min_match_margin, 0.01, 0.20)
         confidence_low = self._clamp(config.confidence_low, 0.0, 0.98)
         confidence_high = self._clamp(config.confidence_high, confidence_low + 0.01, 1.0)
