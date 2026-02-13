@@ -2,6 +2,35 @@
 
 这是一个本地运行的实时声纹识别项目，提供浏览器页面操作，不需要命令行交互即可使用。
 
+## 架构速览（先看这个）
+
+```text
+[音频输入: 麦克风 / 系统回放]
+                |
+                v
+[音频采集与分块: live_service.py]
+                |
+                v
+[语音检测(VAD): signal_processor.py]
+      | 静音           | 噪声             | 人声
+      v                v                  v
+[SILENCE事件]     [NOISE事件]     [声纹提取: WavLM + ECAPA -> embedding]
+                                            |
+                                            v
+                             [相似度匹配: matcher.py (cosine + AS-Norm)]
+                                   | 命中                     | 未命中
+                                   v                          v
+                   [MATCH(已知说话人)并更新原型]      [自动入库判断: enrollment.py]
+                                                                | 通过      | 不通过
+                                                                v           v
+                                                            [新增新人N] [UNKNOWN_SPEECH]
+
+所有事件最终写入:
+[SQLite: speakers / events] -> [Web UI 实时展示: web_frontend.py]
+```
+
+建议先按图看一遍，再往下看“核心能力”和“项目框架”，会更容易对上实现细节。
+
 核心能力：
 - 实时区分 `静音 / 噪声 / 人声`。
 - 自动将稳定新说话人入库（例如 `新人1`、`新人2`）。
