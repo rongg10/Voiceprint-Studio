@@ -1,4 +1,4 @@
-# Speaker Recognition Demo Project (Chinese Release Edition)
+# Speaker Recognition Demo Project
 
 This is a locally run real-time speaker recognition project that provides browser-based operation and can be used without command-line interaction.
 
